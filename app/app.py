@@ -14,11 +14,12 @@ BAUD_RATE = 9600
 
 # Parametry do konfiguracji wykresu
 MAX_POINTS = 50  # Maksymalna liczba punktów na wykresie
-PLOT_DELAY = 100
-PROGRAM_DELAY = 100
+PLOT_DELAY = 0.100
+PROGRAM_DELAY = 0.100
 
 # Globalne zmienne
 is_running = False
+received_value = 0
 
 # Inicjalizacja portu szeregowego
 ser = serial.Serial(COM_PORT, BAUD_RATE)
@@ -28,13 +29,19 @@ fig, ax = plt.subplots()
 line, = ax.plot([], [])  # Inicjalizacja pustego wykresu
 data_buffer = deque(maxlen=MAX_POINTS)  # Bufor danych
 
+# Tekst z wartością odczytaną z portu szeregowego
+value_text = ax.text(0.95, 0.95, "", transform=ax.transAxes, ha="right", va="top", fontsize=12)
+
 # Funkcja do aktualizacji wykresu
 def update_plot(new_data, line):
+    global received_value
+    received_value = new_data
     data_buffer.append(new_data)
     line.set_xdata(range(len(data_buffer)))
     line.set_ydata(data_buffer)
     ax.relim()
     ax.autoscale_view()
+    value_text.set_text(f"Received value: {received_value}")
 
 # Funkcja do odczytu danych z portu szeregowego w osobnym wątku
 def read_serial():
@@ -44,7 +51,6 @@ def read_serial():
             odczyt = ser.readline().decode('utf-8').strip()
             try:
                 odczyt_liczba = int(odczyt)
-                print(odczyt_liczba)
                 update_plot(odczyt_liczba, line)
                 time.sleep(PROGRAM_DELAY)
             except ValueError as e:
@@ -82,7 +88,11 @@ stop_button.pack(side=tk.LEFT, padx=10)
 
 # Funkcja animacji dla aktualizacji wykresu
 def animate(frame):
-    pass  # Pusta funkcja, animacja aktualizacji wykresu
+    line.set_xdata(range(len(data_buffer)))
+    line.set_ydata(data_buffer)
+    ax.relim()
+    ax.autoscale_view()
+    value_text.set_text(f"Received value: {received_value}")
 
 ani = FuncAnimation(fig, animate, frames=None, interval=PLOT_DELAY)
 
