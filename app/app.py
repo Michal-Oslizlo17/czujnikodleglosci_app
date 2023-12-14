@@ -14,8 +14,11 @@ BAUD_RATE = 9600
 
 # Parametry do konfiguracji wykresu
 MAX_POINTS = 50  # Maksymalna liczba punktów na wykresie
-PLOT_DELAY = 0.100
-PROGRAM_DELAY = 0.100
+PLOT_DELAY = 0.01
+PROGRAM_DELAY = 0.01
+
+# Stała wartość osi y
+Y_AXIS_CONSTANT = 200
 
 # Globalne zmienne
 is_running = False
@@ -29,6 +32,9 @@ fig, ax = plt.subplots()
 line, = ax.plot([], [])  # Inicjalizacja pustego wykresu
 data_buffer = deque(maxlen=MAX_POINTS)  # Bufor danych
 
+# Ustawienie osi y na stałą wartość 200
+ax.set_ylim([0, Y_AXIS_CONSTANT])
+
 # Tekst z wartością odczytaną z portu szeregowego
 value_text = ax.text(0.95, 0.95, "", transform=ax.transAxes, ha="right", va="top", fontsize=12)
 
@@ -41,6 +47,10 @@ def update_plot(new_data, line):
     line.set_ydata(data_buffer)
     ax.relim()
     ax.autoscale_view()
+    
+    # Ustawienie osi y na stałą wartość 200
+    ax.set_ylim([0, Y_AXIS_CONSTANT])
+    
     value_text.set_text(f"Received value: {received_value}")
 
 # Funkcja do odczytu danych z portu szeregowego w osobnym wątku
@@ -49,6 +59,7 @@ def read_serial():
     while is_running:
         try:
             odczyt = ser.readline().decode('utf-8').strip()
+            print(odczyt)
             try:
                 odczyt_liczba = int(odczyt)
                 update_plot(odczyt_liczba, line)
@@ -92,6 +103,10 @@ def animate(frame):
     line.set_ydata(data_buffer)
     ax.relim()
     ax.autoscale_view()
+    
+    # Ustawienie osi y na stałą wartość 200
+    ax.set_ylim([0, Y_AXIS_CONSTANT])
+    
     value_text.set_text(f"Received value: {received_value}")
 
 ani = FuncAnimation(fig, animate, frames=None, interval=PLOT_DELAY)
