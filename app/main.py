@@ -7,22 +7,21 @@ import serial  # Import biblioteki pyserial
 import time
 
 # Parametry programu
-PROGRAM_DELAY = 0.05  # Opóźnienie symulacji
 UPDATE_INTERVAL = 1  # Czas w ms między automatycznymi aktualizacjami wykresu
 MAX_X = 30
-Y_RANGE = (0, 400)
+Y_RANGE = (0, 150)
 
 # Globalne zmienne
 is_running = False
 data_queue = []
-ser = serial.Serial('COM3', 9600, timeout=1)  # Ustawienie portu szeregowego
+ser = serial.Serial('COM4', 9600, timeout=1)  # Ustawienie portu szeregowego
 
 def read_serial():
     global is_running, data_queue
     while is_running:
         if ser.in_waiting:
             odczyt = ser.readline().decode('utf-8').strip()
-            print(odczyt)
+            #print(odczyt)
             try:
                 odczyt_liczba = int(odczyt)
                 data_queue.append(odczyt_liczba)
@@ -30,7 +29,6 @@ def read_serial():
                     data_queue.pop(0)
             except ValueError as e:
                 print(f"Błąd przetwarzania danych: {e}")
-        time.sleep(PROGRAM_DELAY)
 
 def start_reading():
     global is_running
@@ -49,7 +47,7 @@ def update_plot():
             ax.clear()
             ax.plot(data_queue, '-o', linewidth=5)
             ax.set_ylim(Y_RANGE)
-            ax.legend(["Dane z COM3"], loc="upper right")
+            ax.legend(["Dane z COM4"], loc="upper right")
             canvas.draw()
         root.after(UPDATE_INTERVAL, update_plot)  # Zaplanuj kolejną aktualizację
 
@@ -60,7 +58,7 @@ def on_closing():
 
 # Tworzenie interfejsu użytkownika
 root = tk.Tk()
-root.title("Odczyt danych z portu COM3 i wykres")
+root.title("Odczyt danych z portu COM4 i wykres")
 
 # Konfiguracja wykresu
 fig = Figure()
