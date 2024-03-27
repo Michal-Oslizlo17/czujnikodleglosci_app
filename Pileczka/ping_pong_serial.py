@@ -1,6 +1,11 @@
 import pygame
 import sys
 import random
+import serial
+from colorama import Style, Fore, init
+
+# Inicjalizacja colorama
+init(autoreset=True)
 
 # Inicjalizacja Pygame
 pygame.init()
@@ -10,6 +15,7 @@ BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 GREEN = (0, 255, 0)
 RED = (255, 0, 0)
+ORANGE = (255, 165, 0)
 
 # Ustawienia początkowe
 SCREEN_WIDTH = 1400
@@ -22,7 +28,35 @@ PADDLE_HEIGHT = 80
 BALL_SPEED_X = 3
 BALL_SPEED_Y = 3
 PADDLE_SPEED = 8
-AI_SPEED = 4
+
+# Ustawienia AI
+AI_SPEED = 3.25       # Default: 3.25
+MISTAKE_CHANCE = 10   # Chance of AI making a mistake (10%)
+
+show_exclamation = False
+exclamation_timer = 120
+
+def draw_exclamation():
+    global show_exclamation, exclamation_timer
+    if show_exclamation:
+        # Ładowanie czcionki
+        font_size = 500
+        font = pygame.font.SysFont('Consolas', font_size)
+
+        text = font.render('!', True, ORANGE)
+        text_rect = text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
+        screen.blit(text, text_rect)
+
+        font_size = 50
+        font = pygame.font.SysFont('Consolas', font_size)
+
+        text = font.render('[Wartość poza zakresem]', True, ORANGE)
+        text_rect = text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 250))
+        screen.blit(text, text_rect)
+
+        exclamation_timer -= 1
+        if exclamation_timer <= 0:
+            show_exclamation = False
 
 # Ustawienie ekranu
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -34,8 +68,9 @@ clock = pygame.time.Clock()
 # Inicjalizacja połączenia z portem szeregowym
 try:
     ser = serial.Serial('COM3', 9600, timeout=1)
-except serial.SerialException:
-    print("Nie można połączyć z portem COM3. Upewnij się, że urządzenie jest podłączone i spróbuj ponownie.")
+except serial.SerialException as e:
+    print(f"{Fore.RED}Nie można połączyć z portem COM3. Upewnij się, że urządzenie jest podłączone i spróbuj ponownie.{Style.RESET_ALL}")
+    print(f"{Fore.RED}Error code: {e}{Style.RESET_ALL}")
     sys.exit()
 
 def ball_init():
@@ -103,18 +138,31 @@ while True:
         if line.isdigit():
             newPos = int(line)
             # Sprawdzenie, czy wartość jest w oczekiwanym zakresie
-            if 10 <= newPos <= 100:
-                # Zakładamy, że zakres wartości to 0010 - 0100
-                newPos = int((newPos - 10) * (SCREEN_HEIGHT - PADDLE_HEIGHT) / (100 - 10))
+            if 30 <= newPos <= 90:
+                # Zakładamy, że zakres wartości to 0030 - 0090
+                newPos = int((newPos - 30) * (SCREEN_HEIGHT - PADDLE_HEIGHT) / (90 - 30))
                 paddle2_pos = newPos
+                print(f"{Fore.GREEN}[OK]{Style.RESET_ALL}   Otrzymana wartość jest poprawna, value: {newPos}")
+                show_exclamation = False
             else:
-                print("Otrzymana wartość jest poza zakresem 0010 - 0100")
+                print(f"{Fore.LIGHTYELLOW_EX}[WARN]{Style.RESET_ALL} Otrzymana wartość jest poza zakresem 0030 - 0090, value: {newPos}")
+                show_exclamation = True
+                
 
     # AI dla lewej paletki
-    if ball_pos[1] > paddle1_pos + PADDLE_HEIGHT // 2:
-        paddle1_pos += AI_SPEED
+    # Decide randomly if AI will make a mistake this move
+    if random.randint(1, 100) <= MISTAKE_CHANCE:
+        mistake_modifier = -1  # Invert direction for a mistake
+        print(f"{Fore.GREEN}AI popełniło sztuczny błąd.{Style.RESET_ALL}")
     else:
-        paddle1_pos -= AI_SPEED
+        mistake_modifier = 1  # Keep direction correct if no mistake
+        print(f"{Fore.GREEN}AI zagrało normalnie.{Style.RESET_ALL}")
+    
+    # Ruch AI
+    if ball_pos[1] > paddle1_pos + PADDLE_HEIGHT // 2:
+        paddle1_pos += AI_SPEED * mistake_modifier  # Move up or mistake down
+    else:
+        paddle1_pos -= AI_SPEED * mistake_modifier  # Move down or mistake up
 
     paddle2_pos += paddle2_vel
 
@@ -123,5 +171,8 @@ while True:
     paddle2_pos = max(0, min(SCREEN_HEIGHT - PADDLE_HEIGHT, paddle2_pos))
 
     draw(screen)
+    draw_exclamation()
     pygame.display.flip()
     clock.tick(60)
+
+    print("-"*100)
